@@ -48,7 +48,10 @@
     "context": ".."  // プロジェクトルートをdocker buildのコンテキストに指定
   },
 
-  "runArgs": ["--network=br-devcontainer-template-${localEnv:USER}"],
+  // devcontainer 起動時の docker run のオプション
+  "runArgs": [
+    "--network=br-devcontainer-template-${localEnv:USER}"
+  ],
 
 
   /**

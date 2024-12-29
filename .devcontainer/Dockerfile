@@ -1,5 +1,5 @@
 # https://mcr.microsoft.com/en-us/product/devcontainers/base/about
-FROM mcr.microsoft.com/devcontainers/base:dev-ubuntu-24.04   
+FROM mcr.microsoft.com/devcontainers/base:dev-ubuntu-24.04
 
 RUN apt-get update && \
     apt-get install -y \
@@ -74,6 +74,7 @@ RUN curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases
 # Poetry インストール
 RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/home/vscode/.pypoetry python3.12 - && \
     chown -R vscode:vscode /home/vscode/.pypoetry
+ENV PATH="$PATH:/home/vscode/.pypoetry/bin"
 
 # spotinfo インストール
 RUN wget https://github.com/alexei-led/spotinfo/releases/download/1.0.7/spotinfo_linux_amd64 && \

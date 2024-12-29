@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export $(cat ${PROJECT_DIR}/./devcontainer/.env | grep -v -e "^$" -e "^ *#" | sed -e "s| *#.*$||" | xargs)
+export $(cat ${PROJECT_DIR}/.devcontainer/.env | grep -v -e "^$" -e "^ *#" | sed -e "s| *#.*$||" | xargs)
 
 source <(kubectl completion bash)
 source <(helm completion bash)
