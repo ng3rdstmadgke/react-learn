@@ -34,7 +34,7 @@
   // features一覧: https://containers.dev/features
   "features": {
     // docker outside of dockerを利用するための設定: https://github.com/devcontainers/features/tree/main/src/docker-outside-of-docker
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
   },
 
 

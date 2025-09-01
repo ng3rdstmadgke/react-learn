@@ -26,7 +26,8 @@ RUN --mount=type=cache,target=/var/cache/apt \
       fzf \
       groff \
       procps \
-      default-mysql-client
+      default-mysql-client \
+      postgresql-client-16
 
 # ロケール設定
 RUN echo 'ja_JP.UTF-8 UTF-8' >> /etc/locale.gen && \
