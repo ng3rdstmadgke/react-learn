@@ -7,7 +7,7 @@
    * プロパティ: https://containers.dev/implementors/json_reference/#general-properties
    */
   // UIに表示するdevcontainerの名前
-  "name": "devcontainer-template",
+  "name": "lang-template",
 
    // コンテナの環境変数設定
   "containerEnv": {
@@ -18,7 +18,7 @@
       // ホスト側のユーザー名
       "HOST_USER": "${localEnv:USER}",
       // devcontainerが所属するネットワーク名
-      "DOCKER_NETWORK": "br-devcontainer-template-${localEnv:USER}"
+      "DOCKER_NETWORK": "br-lang-template-${localEnv:USER}"
   },
 
   "forwardPorts": [
@@ -35,8 +35,6 @@
   "features": {
     // docker outside of dockerを利用するための設定: https://github.com/devcontainers/features/tree/main/src/docker-outside-of-docker
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
-    // k9s: https://github.com/rio/features
-    "ghcr.io/rio/features/k9s:1": {}
   },
 
 
@@ -50,7 +48,7 @@
 
   // devcontainer 起動時の docker run のオプション
   "runArgs": [
-    "--network=br-devcontainer-template-${localEnv:USER}"
+    "--network=br-lang-template-${localEnv:USER}"
   ],
 
 
@@ -81,20 +79,9 @@
         "bierner.markdown-mermaid",
         "jebbs.plantuml",
 
-        // Terraform
-        "hashicorp.terraform",
-        "saramorillon.terraform-graph",
-
-        // Python
-        "ms-python.vscode-pylance",
-        "ms-python.black-formatter",
-        "matangover.mypy",
-        "charliermarsh.ruff",
-        "ms-toolsai.jupyter",
-
         // Copilot
-        "GitHub.copilot",
-        "GitHub.copilot-chat",
+        // "GitHub.copilot",
+        // "GitHub.copilot-chat",
 
         // Others
         "ms-vscode.makefile-tools",
