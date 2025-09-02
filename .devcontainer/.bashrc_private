@@ -2,3 +2,6 @@
 
 ENVS=$(cat ${PROJECT_DIR}/.devcontainer/.env | grep -v -e "^$" -e "^ *#" | sed -e "s| *#.*$||" | xargs)
 [ -n "$ENVS" ] && export $ENVS
+
+source <(docker completion bash)
+complete -C '/usr/local/bin/aws_completer' aws
