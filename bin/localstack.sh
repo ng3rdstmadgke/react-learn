@@ -19,4 +19,18 @@ cat >&2 <<EOF
 aws cli コマンド
 
 aws s3 ls
+
+aws dynamodb scan --table-name Books
+
+aws dynamodb get-item \
+  --table-name Books \
+  --key '{"id": {"N":"2"}, "title": {"S":"Effective Java"}}' \
+  --consistent-read \
+  --output json
+
+aws dynamodb query \
+  --table-name Books \
+  --key-condition-expression "id = :id" \
+  --expression-attribute-values '{":id":{"N":"2"}}' \
+  --output json
 EOF

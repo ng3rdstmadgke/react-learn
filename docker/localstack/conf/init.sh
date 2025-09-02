@@ -49,3 +49,30 @@ awslocal s3api create-bucket \
   --region ${REGION} \
   --bucket sample \
   --create-bucket-configuration LocationConstraint=${REGION}
+
+# dynamodb: user table
+TABLE_NAME=Books
+awslocal dynamodb create-table \
+  --region ${REGION} \
+  --table-name $TABLE_NAME \
+  --attribute-definitions \
+      AttributeName=id,AttributeType=N \
+      AttributeName=title,AttributeType=S \
+  --key-schema \
+      AttributeName=id,KeyType=HASH \
+      AttributeName=title,KeyType=RANGE \
+  --billing-mode PAY_PER_REQUEST
+
+
+awslocal dynamodb put-item \
+  --region ${REGION} \
+  --table-name $TABLE_NAME \
+  --item '{"id": {"N": "1"}, "title": {"S": "The Go Programming Language"}, "author": {"S": "Alan A. A. Donovan"}, "price": {"N": "3500"}}'
+awslocal dynamodb put-item \
+  --region ${REGION} \
+  --table-name $TABLE_NAME \
+  --item '{"id": {"N": "2"}, "title": {"S": "Effective Java"}, "author": {"S": "Joshua Bloch"}, "price": {"N": "4500"}}'
+awslocal dynamodb put-item \
+  --region ${REGION} \
+  --table-name $TABLE_NAME \
+  --item '{"id": {"N": "3"}, "title": {"S": "Clean Code"}, "author": {"S": "Robert C. Martin"}, "price": {"N": "4000"}}'
