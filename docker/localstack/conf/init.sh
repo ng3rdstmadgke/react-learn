@@ -4,7 +4,7 @@
 # デバッグコマンド: docker logs terraform-tutorial_devcontainer-localstack-1  | less
 set -ex
 
-REGION=ap-northeast-1
+export AWS_DEFAULT_REGION=ap-northeast-1
 
 # secretsmanager: db secret
 cat <<EOF > /tmp/mysql_secret.json
@@ -16,7 +16,6 @@ cat <<EOF > /tmp/mysql_secret.json
 }
 EOF
 awslocal secretsmanager create-secret \
-  --region ${REGION} \
   --name "sample/local/mysql" \
   --secret-string file:///tmp/mysql_secret.json
 
@@ -29,50 +28,75 @@ cat <<EOF > /tmp/postgresql_secret.json
 }
 EOF
 awslocal secretsmanager create-secret \
-  --region ${REGION} \
   --name "sample/local/postgresql" \
   --secret-string file:///tmp/postgresql_secret.json
 
 # sns
 awslocal sns create-topic \
-  --region ${REGION} \
   --name sample-topic
 
 # sqs: report job queue
 awslocal sqs create-queue \
-  --region ${REGION} \
   --queue-name sample-sqs
 
 
 # s3: app bucket
 awslocal s3api create-bucket \
-  --region ${REGION} \
   --bucket sample \
-  --create-bucket-configuration LocationConstraint=${REGION}
+  --create-bucket-configuration LocationConstraint=${AWS_DEFAULT_REGION}
 
-# dynamodb: user table
-TABLE_NAME=Books
+
+# dynamodb: センサーデータテーブル
 awslocal dynamodb create-table \
-  --region ${REGION} \
-  --table-name $TABLE_NAME \
+  --table-name SensorReadings \
   --attribute-definitions \
-      AttributeName=id,AttributeType=N \
-      AttributeName=title,AttributeType=S \
+    AttributeName=pk,AttributeType=S \
+    AttributeName=ts,AttributeType=S \
+    AttributeName=sensorId,AttributeType=S \
+    AttributeName=locationBucket,AttributeType=S \
   --key-schema \
-      AttributeName=id,KeyType=HASH \
-      AttributeName=title,KeyType=RANGE \
-  --billing-mode PAY_PER_REQUEST
+    AttributeName=pk,KeyType=HASH \
+    AttributeName=ts,KeyType=RANGE \
+  --billing-mode PAY_PER_REQUEST \
+  --global-secondary-indexes '[
+    {
+      "IndexName": "GSI_SensorLatest",
+      "KeySchema": [
+        {"AttributeName": "sensorId", "KeyType": "HASH"},
+        {"AttributeName": "ts"      , "KeyType": "RANGE"}
+      ],
+      "Projection": {"ProjectionType": "ALL"}
+    },
+    {
+      "IndexName": "GSI_LocationTime",
+      "KeySchema": [
+        {"AttributeName": "locationBucket", "KeyType": "HASH"},
+        {"AttributeName": "ts"            , "KeyType": "RANGE"}
+      ],
+      "Projection": {"ProjectionType": "ALL"}
+    }
+  ]'
+
+awslocal dynamodb update-time-to-live \
+  --table-name SensorReadings \
+  --time-to-live-specification "Enabled=true, AttributeName=expiresAt"
 
 
-awslocal dynamodb put-item \
-  --region ${REGION} \
-  --table-name $TABLE_NAME \
-  --item '{"id": {"N": "1"}, "title": {"S": "The Go Programming Language"}, "author": {"S": "Alan A. A. Donovan"}, "price": {"N": "3500"}}'
-awslocal dynamodb put-item \
-  --region ${REGION} \
-  --table-name $TABLE_NAME \
-  --item '{"id": {"N": "2"}, "title": {"S": "Effective Java"}, "author": {"S": "Joshua Bloch"}, "price": {"N": "4500"}}'
-awslocal dynamodb put-item \
-  --region ${REGION} \
-  --table-name $TABLE_NAME \
-  --item '{"id": {"N": "3"}, "title": {"S": "Clean Code"}, "author": {"S": "Robert C. Martin"}, "price": {"N": "4000"}}'
+DAY=$(date -u +"%Y%m%d")
+for i in {1..10}; do
+  TS=$(date -u -d "${TS} +1 hour" +"%Y-%m-%dT%H:%M:%SZ")
+  EXP=$(($(date -u +%s) + 90*24*3600))  # 90日保管
+  for sensor_id in sensor-001 sensor-002 sensor-003; do
+    temperature="$(shuf -i 20-30 -n 1).$(shuf -i 0-9 -n 1)"
+    humidity="$(shuf -i 40-70 -n 1)"
+    awslocal dynamodb put-item --table-name SensorReadings --item "{
+      \"pk\": {\"S\": \"${sensor_id}#${DAY}\"},
+      \"ts\": {\"S\": \"${TS}\"},
+      \"sensorId\": {\"S\": \"${sensor_id}\"},
+      \"locationBucket\": {\"S\": \"yokohama#${DAY}\"},
+      \"temperature\": {\"N\": \"${temperature}\"},
+      \"humidity\": {\"N\": \"${humidity}\"},
+      \"expiresAt\": {\"N\": \"${EXP}\"}
+    }"
+  done
+done

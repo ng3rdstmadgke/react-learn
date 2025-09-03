@@ -2,8 +2,32 @@
 
 set -e
 
-# DockerHub: https://hub.docker.com/_/postgres
+
 CONTAINER_NAME=sample-postgresql
+
+function usage() {
+cat >&2 <<EOF
+ログ:
+docker logs -f $CONTAINER_NAME
+
+
+ログインコマンド:
+PGPASSWORD=root1234 psql -U app -h sample-postgresql -d sample -p 5432
+EOF
+exit 1
+}
+
+args=()
+while [ "$1" != "" ]; do
+  case $1 in
+    -h | --help ) usage ;;
+    *           ) args+=("$1") ;;
+  esac
+  shift
+done
+
+
+# DockerHub: https://hub.docker.com/_/postgres
 docker rm -f $CONTAINER_NAME || true
 docker run \
   --rm \
@@ -15,8 +39,4 @@ docker run \
   -e POSTGRES_DB=sample \
   postgres:16.10
 
-cat >&2 <<EOF
-ログインコマンド
-
-PGPASSWORD=root1234 psql -U app -h sample-postgresql -d sample -p 5432
-EOF
+docker logs -f $CONTAINER_NAME
