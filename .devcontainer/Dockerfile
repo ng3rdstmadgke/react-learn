@@ -40,3 +40,7 @@ RUN ln -sf /usr/share/zoneinfo/Asia/Tokyo /etc/localtime
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
     unzip awscliv2.zip && \
     ./aws/install
+
+# rabbitmqadmin インストール
+RUN wget -O /usr/local/bin/rabbitmqadmin https://github.com/rabbitmq/rabbitmqadmin-ng/releases/download/v2.9.0/rabbitmqadmin-2.9.0-x86_64-unknown-linux-gnu && \
+    chmod +x /usr/local/bin/rabbitmqadmin
