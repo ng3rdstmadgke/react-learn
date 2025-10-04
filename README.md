@@ -1,5 +1,7 @@
 # Reactの基礎
 
+[React Foundations | NEXT.js](https://nextjs.org/learn/react-foundations)
+
 - [chapter4 Reactを始めよう](docs/react_foundations/4_getting_started_with_react.md)
 - [chapter5 コンポーネントを使ったUIの構築](docs/react_foundations/5_building_ui_with_components.md)
 - [chapter6 Propsでデータを表示する](docs/react_foundations/6_displaying_data_with_props.md)
