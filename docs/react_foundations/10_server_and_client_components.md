@@ -7,7 +7,7 @@
 
 # サーバーとクライアント
 
-![client_server_boundary](img/client_server_boundary.png)
+![client_server_boundary](img/10_client_server_boundary.png)
 
 それぞれの環境には、独自の機能と制約があります。例えば、サーバーサイドでレンダリングを行うと、クライアントからのAPIリクエストを削減できるため、パフォーマンスを向上させることができます。しかし、UIをインタラクティブにするには、クライアント側でDOMを更新する必要があります。
 
