@@ -575,3 +575,154 @@ export default function NavLinks() {
 
 
 ```
+
+
+
+# 6. データベースの設定
+
+- https://nextjs.org/learn/dashboard-app/setting-up-your-database
+
+
+## Postgresqlの起動
+
+```bash
+./bin/postgresql.sh -h
+```
+
+ログイン
+
+```bash
+PGPASSWORD=root1234 psql -U app -h sample-postgresql -d sample -p 5432
+```
+
+基本操作
+
+```
+# DB一覧
+\l
+
+# use database
+\c <DB_NAME>
+
+# テーブル一覧
+\dt
+
+# テーブル一覧(viewやsequenceも含む)
+\d
+
+# テーブルのスキーマ確認
+\d <TABLE_NAME>
+
+# テーブルのアクセス権限確認
+\z <TABLE_NAME>
+
+# ユーザー一覧を表示
+\du
+```
+
+
+## 環境変数ファイルの作成
+
+```bash
+cp .env.example .env
+```
+
+`.env`
+```bash
+# Copy from .env.local on the Vercel dashboard
+# https://nextjs.org/learn/dashboard-app/setting-up-your-database#create-a-postgres-database
+POSTGRES_URL=postgresql://app:root1234@sample-postgresql:5432/sample
+POSTGRES_PRISMA_URL=
+POSTGRES_URL_NON_POOLING=
+POSTGRES_USER=app
+POSTGRES_HOST=sample-postgresql
+POSTGRES_PASSWORD=root1234
+POSTGRES_DATABASE=sample
+
+# `openssl rand -base64 32`
+AUTH_SECRET=
+AUTH_URL=http://localhost:3000/api/auth
+```
+
+## DBのシーディング
+
+シーディング用のルートを少し修正
+
+`app/seed/route.ts`
+```ts
+// ...
+
+// ローカルのDBに接続するので ssl=false に
+// connection設定: https://github.com/porsager/postgres?tab=readme-ov-file#connection-details
+//const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+const sql = postgres(process.env.POSTGRES_URL!, {ssl: false});
+
+async function seedUsers() {
+  // 複数回実行するとエラーになるのでコメントアウト
+  // await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+  // ...
+  return insertedUsers;
+}
+
+async function seedInvoices() {
+  // 複数回実行するとエラーになるのでコメントアウト
+  // await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+  // ...
+  return insertedInvoices;
+}
+
+async function seedCustomers() {
+  // 複数回実行するとエラーになるのでコメントアウト
+  // await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+  // ...
+  return insertedCustomers;
+}
+
+async function seedRevenue() {
+  // ...
+}
+
+export async function GET() {
+
+  try {
+    // CREATE EXTENSIONはここに一回だけ定義
+    await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+
+    const result = await sql.begin((sql) => [
+      seedUsers(),
+      seedCustomers(),
+      seedInvoices(),
+      seedRevenue(),
+    ]);
+
+    return Response.json({ message: 'Database seeded successfully' });
+  } catch (error) {
+    return Response.json({ error }, { status: 500 });
+  }
+}
+
+```
+
+
+シーディングURLにアクセス
+
+- http://localhost:3000/seed
+
+
+確認
+
+```bash
+PGPASSWORD=root1234 psql -U app -h sample-postgresql -d sample -p 5432
+# psql (16.10 (Ubuntu 16.10-0ubuntu0.24.04.1))
+# Type "help" for help.
+
+sample=# SELECT invoices.amount, customers.name
+FROM invoices
+JOIN customers ON invoices.customer_id = customers.id
+WHERE invoices.amount = 666;
+#  amount |    name     
+# --------+-------------
+#     666 | Evil Rabbit
+#     666 | Evil Rabbit
+# (2 rows)
+```
