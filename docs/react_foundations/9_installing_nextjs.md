@@ -2,6 +2,7 @@ Next.jsのインストール
 ---
 
 - https://nextjs.org/learn/react-foundations/installation
+- [ソースコード](../../react_foundations/9_installing_nextjs/)
 
 
 # NextJSのインストール

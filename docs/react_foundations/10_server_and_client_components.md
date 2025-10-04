@@ -2,6 +2,7 @@
 ---
 
 - https://nextjs.org/learn/react-foundations/server-and-client-components
+- [ソースコード](../../react_foundations/10_server_and_client_components/)
 
 
 # サーバーとクライアント
@@ -94,7 +95,7 @@ export default function HomePage() {
 ```
 
 
-### ※デフォルトエクスポートと名前付きエクスポート
+**※デフォルトエクスポートと名前付きエクスポート**
 
 * `import LikeButton from './components/like-button';`
     * **デフォルトエクスポート** されたものをインポートするための書き方です。

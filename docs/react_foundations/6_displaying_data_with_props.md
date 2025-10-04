@@ -2,6 +2,7 @@ Propsでデータを表示する
 ---
 
 - https://nextjs.org/learn/react-foundations/displaying-data-with-props
+- [ソースコード](../../react_foundations/6_displaying_data_with_props/)
 
 # Props
 

@@ -2,6 +2,7 @@
 ---
 
 - https://nextjs.org/learn/react-foundations/building-ui-with-components
+- [ソースコード](../../react_foundations/5_building_ui_with_components/)
 
 
 
