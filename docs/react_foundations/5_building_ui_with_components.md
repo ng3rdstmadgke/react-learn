@@ -14,7 +14,7 @@
 
 
 
-## Component
+# Component
 
 ReactではコンポーネントはUI要素(JSX)を返す関数です。
 
