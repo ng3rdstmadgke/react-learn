@@ -7,7 +7,7 @@
    * プロパティ: https://containers.dev/implementors/json_reference/#general-properties
    */
   // UIに表示するdevcontainerの名前
-  "name": "lang-template",
+  "name": "react-learn",
 
    // コンテナの環境変数設定
   "containerEnv": {
@@ -18,7 +18,7 @@
       // ホスト側のユーザー名
       "HOST_USER": "${localEnv:USER}",
       // devcontainerが所属するネットワーク名
-      "DOCKER_NETWORK": "br-lang-template-${localEnv:USER}"
+      "DOCKER_NETWORK": "br-react-learn-${localEnv:USER}"
   },
 
   "forwardPorts": [
@@ -48,7 +48,7 @@
 
   // devcontainer 起動時の docker run のオプション
   "runArgs": [
-    "--network=br-lang-template-${localEnv:USER}"
+    "--network=br-react-learn-${localEnv:USER}"
   ],
 
 

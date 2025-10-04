@@ -44,3 +44,8 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
 # rabbitmqadmin インストール
 RUN wget -O /usr/local/bin/rabbitmqadmin https://github.com/rabbitmq/rabbitmqadmin-ng/releases/download/v2.9.0/rabbitmqadmin-2.9.0-x86_64-unknown-linux-gnu && \
     chmod +x /usr/local/bin/rabbitmqadmin
+
+# nodejs インストール
+# https://nodesource.com/products/distributions
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs
