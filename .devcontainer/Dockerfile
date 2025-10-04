@@ -49,3 +49,6 @@ RUN wget -O /usr/local/bin/rabbitmqadmin https://github.com/rabbitmq/rabbitmqadm
 # https://nodesource.com/products/distributions
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs
+
+# pnpm インストール
+RUN npm install -g pnpm

@@ -1,1 +1,4 @@
 tmp/
+**/.next/
+**/node_modules/
+**/.pnpm-store/

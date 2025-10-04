@@ -9,3 +9,7 @@
 - [chapter8 ReactからNext.jsへ](docs/react_foundations/8_from_react_to_nextjs.md)
 - [chapter9 Next.jsのインストール](docs/react_foundations/9_installing_nextjs.md)
 - [chapter10 サーバーおよびクライアントコンポーネント](docs/react_foundations/10_server_and_client_components.md)
+
+# Next.jsの基礎
+
+[Next.js Foundations | NEXT.js](https://nextjs.org/learn/dashboard-app)

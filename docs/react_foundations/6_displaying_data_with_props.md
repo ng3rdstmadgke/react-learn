@@ -15,6 +15,7 @@ Reactコンポーネントにプロパティとして情報を渡すための仕
 
 コンポーネントではHTML属性と同様にプロパティを指定することができます。
 
+
 ```jsx
 function HomePage() {
   return (
@@ -23,6 +24,12 @@ function HomePage() {
     </div>
   );
 }
+```
+
+htmlの `class` 属性を指定したい場合は `className` を利用します。 (JavaScriptの予約後であるため)
+
+```jsx
+<h1 className="text-blue-500">I'm blue!</h1>
 ```
 
 propsを渡されたコンポーネントは、それを関数の引数として受け取ることができます。
