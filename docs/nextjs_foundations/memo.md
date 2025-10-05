@@ -784,6 +784,8 @@ WHERE invoices.amount = 666;
 
 # 7. データの取得
 
+- https://nextjs.org/learn/dashboard-app/fetching-data
+
 React サーバー コンポーネントを使用している場合は、API レイヤーをスキップして、データベース認証情報をクライアントに公開するリスクなしに、データベースを直接クエリできます。
 
 ## サーバーコンポーネントを使用してデータを取得する
@@ -1054,3 +1056,58 @@ export async function fetchCardData() {
 - あらゆるライブラリやフレームワークに適用できるネイティブ JavaScript パターンを使用します。
 
 しかし、このパターンには欠点が1つあります。時間のかかるデータ取得があると、すべてのデータ取得が遅くなってしまうということです。次の章で詳しく見ていきましょう。
+
+
+# 8. 静的レンダリングと動的レンダリング
+
+- https://nextjs.org/learn/dashboard-app/static-and-dynamic-rendering
+
+## 静的レンダリング
+
+静的レンダリングでは、データの取得とレンダリングはサーバー上でビルド時（デプロイ時）またはデータの再検証時に実行されます。  
+ブログ投稿や製品ページなど、データがないUIやユーザー間で共有されるデータがある場合に有効です。
+
+メリット
+
+- **高速**  キャッシュが効くためレスポンスを高速にすることができる
+- **負荷軽減** キャッシュが効くため、サーバーのコンピューティングリソースを削減できる
+- **SEO** 事前レンダリングされたコンテンツは検索エンジンのクローラーによるインデックス作成が容易になる
+
+## 動的レンダリング
+
+動的レンダリングではコンテンツはリクエスト時にサーバー上でレンダリングされます。
+
+メリット
+
+- **リアルタイムデータ** 頻繁に更新されるデータをリアルタイムに確認することができる
+- **ユーザー固有のコンテンツ** ダッシュボードやユーザープロファイルなどのパーソナライズされたコンテンツを提供することが容易
+- **リクエスト時の情報** CookieやGETパラメータなど、リクエスト時にのみ知る事ができる情報にアクセスできる
+
+## 時間のかかるデータ取得のシミュレーション
+
+あるデータリクエストが他のすべてのリクエストよりも遅い場合をシミュレーションするために `data.ts` の `fetchRevenue()` を修正します。
+
+`/app/lib/data.ts`
+```ts
+export async function fetchRevenue() {
+  try {
+    // We artificially delay a response for demo purposes.
+    // Don't do this in production :)
+    console.log('Fetching revenue data...');  // コメントイン
+    await new Promise((resolve) => setTimeout(resolve, 3000));  // コメントイン
+ 
+    const data = await sql<Revenue[]>`SELECT * FROM revenue`;
+ 
+    console.log('Data fetch completed after 3 seconds.');  // コメントイン
+ 
+    return data;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch revenue data.');
+  }
+}
+```
+
+http://localhost:3000/dashboard/ を開くと、`fetchRevenue()` が完了するまで、ページ全体がブロックされ、UIを表示できなくなります。
+
+動的レンダリングでは、**アプリケーションの速度は、最も遅いデータ取得速度と同じになります。**
