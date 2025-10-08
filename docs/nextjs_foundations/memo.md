@@ -1659,7 +1659,7 @@ export default function Search({ placeholder }: { placeholder: string }) {
     } else {
       params.delete('query')
     }
-    // ページをリロードせずにURLを更新
+    // useRouterのルーターフックを利用することでページをリロードせずにURLを更新できます。
     replace(`${pathname}?${params.toString()}`);
   }
 
