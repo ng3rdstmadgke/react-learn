@@ -1978,3 +1978,288 @@ export default function Search({ placeholder }: { placeholder: string }) {
 }
 
 ```
+
+![img](img/11_search_and_pagination.png)
+
+# 12. データの変更
+
+
+## React Server Actions
+
+- [How to create forms with Server Actions | NEXT.js](https://nextjs.org/docs/app/guides/forms)
+
+React Server Actionsを使用すると、サーバー上で直接非同期コードを実行できます。  
+データの変更のためにAPIエンドポイントを作成する必要がなくなります。代わりに、サーバー上で実行され、クライアントまたはサーバーコンポーネントから呼び出せる非同期関数を記述します。
+
+ウェブアプリケーションは様々な脅威に対して脆弱であるため、セキュリティは最優先事項です。  
+Server Actionsには、暗号化されたクロージャ、厳格な入力チェック、エラーメッセージのハッシュ化、ホスト制限などの機能が含まれており、これらが連携してアプリケーションのセキュリティを大幅に強化します。
+
+
+## Server Actions でフォームを利用する
+
+Reactでは、`<form>` 要素の `action` 属性を使用してアクションを呼び出すことができます。このaction属性には、キャプチャされたデータを含むネイティブの [FormData](https://developer.mozilla.org/en-US/docs/Web/API/FormData) オブジェクトが自動的に渡されます。
+
+
+
+```ts
+// Server Component
+export default function Page() {
+  // Action
+  async function create(formData: FormData) {
+    'use server';
+ 
+    // Logic to mutate data...
+  }
+ 
+  // Invoke the action using the "action" attribute
+  return <form action={create}>...</form>;
+}
+```
+
+サーバーコンポーネント内で Server Actions を呼び出す利点は、クライアント側でJavaScriptの読み込みが完了していなくてもフォームが機能するということです。
+
+
+## Server Actions と Next.js
+
+Server Actions は [Next.js のキャッシュ機能](https://nextjs.org/docs/app/guides/caching)とも深く連携しています。Server Actions 経由でフォームが送信された場合、アクションでデータを変更できるだけでなく、`revalidatePath` や `revalidateTag` といったAPIを使用して関連するキャッシュを再検証することも可能です。
+
+## Invoiceの作成
+
+### 1. 新しいルートとフォームの作成
+
+
+`/dashboard/invoices` に新しいルート `/create` を追加します。
+
+
+```bash
+mkdir -p app/dashboard/invoices/create
+touch app/dashboard/invoices/create/page.tsx
+```
+
+
+`/app/dashboard/invoices/create/page.tsx`
+```tsx
+import Form from '@/app/ui/invoices/create-form';
+import Breadcrumbs from '@/app/ui/invoices/breadcrumbs';
+import { fetchCustomers } from '@/app/lib/data';
+ 
+export default async function Page() {
+  const customers = await fetchCustomers();
+ 
+  return (
+    <main>
+      <Breadcrumbs
+        breadcrumbs={[
+          { label: 'Invoices', href: '/dashboard/invoices' },
+          {
+            label: 'Create Invoice',
+            href: '/dashboard/invoices/create',
+            active: true,
+          },
+        ]}
+      />
+      <Form customers={customers} />
+    </main>
+  );
+}
+```
+
+ページはサーバーコンポーネントであり、`customers` データを取得して `<Form>` コンポーネントに渡します。
+
+
+フォームの実態は `/app/ui/invoices/breadcrumbs` 
+
+
+![img](img/12_form.png)
+
+### 2. Server Actions を作成する
+
+フォームが送信されたときに呼び出されるサーバーアクションを定義します。
+
+`/app/lib/actions.ts` を作成し、 `'use server';` を指定します。  
+※ [`'use server'`](https://react.dev/reference/rsc/use-server) はクライアント側から呼び出せるサーバー側の関数をマークするために利用します。
+
+`'use server'` を追加することで、ファイル内のエクスポートされた関数をすべてサーバーアクションとしてマークします。  
+れらのサーバー関数は、クライアントコンポーネントやサーバーコンポーネントでインポートして使用できます。  
+このファイルに含まれる未使用の関数は、最終的なアプリケーションバンドルから自動的に削除されます。
+
+※ 関数内に `'use server'` を追加することで、サーバーコンポーネント内に直接サーバーアクションを記述することも可能です。
+
+
+`/app/lib/actions.ts`
+```ts
+'use server';
+ 
+export async function createInvoice(formData: FormData) {
+
+}
+```
+
+
+次に、 `<Form>` コンポーネント内で、 `createInvoice` をインポートします。`<form>` 要素に `action` 属性を追加し、 `createInvoice` アクションを呼び出します。
+
+`/app/ui/invoices/create-form.tsx`
+```tsx
+// ...
+import { createInvoice } from '@/app/lib/actions';  // 追加
+
+export default function Form({ customers }: { customers: CustomerField[] }) {
+  return (
+    <form action={createInvoice}> {/* action属性を追加 */}
+```
+
+### 補足: action属性に関して
+
+HTMLではaction属性にはフォームの送信先URLを指定しますが、Reactでは `action` 属性は特別なプロパティとみなされており、アクション(関数)を指定することができます。  
+サーバーアクションはバックグラウンドで `POST` APIエンドポイントを作成するため、サーバーアクションを使用する際にAPIエンドポイントを手動で作成する必要はありません。  
+
+### 3. `formData` からデータを抽出する
+
+`FormData` の [`get` メソッド](https://developer.mozilla.org/en-US/docs/Web/API/FormData/get) でフォームのデータを取得します。  
+※ まとめて取得したい場合は [`entries` メソッド](https://developer.mozilla.org/en-US/docs/Web/API/FormData/entries) も利用できます。
+
+
+`/app/lib/actions.ts`
+```ts
+'use server';
+ 
+export async function createInvoice(formData: FormData) {
+  // FormData: https://developer.mozilla.org/ja/docs/Web/API/FormData
+  const rawFormData = {
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  }
+  console.log('Raw Form Data:', rawFormData);  // サーバー側で実行されるのでターミナル側にログが出力されます
+}
+```
+
+
+### 4. データのバリデーション
+
+フォームをデータベースに送信する前にバリデーションを行います。  
+請求書テーブルのデータ型は `/app/lib/definitions.ts` の `Invoice` として定義されています。
+
+`/app/lib/definitions.ts`
+```ts
+export type Invoice = {
+  id: string; // Will be created on the database
+  customer_id: string;
+  amount: number; // Stored in cents
+  status: 'pending' | 'paid';
+  date: string;
+};
+```
+
+#### 型のバリデーションと強制
+
+DBの `amount` は `number` 型ですが、フォームの `amount` は `string` 型になっていることがわかります。
+
+`/app/lib/actions.ts`
+```ts
+console.log('Type of amount:', typeof rawFormData.amount);  // Type of amount: string
+```
+
+TypeScriptでは型の検証と強制には [Zod](https://zod.dev/) を利用します。  
+
+`/app/lib/actions.ts`
+```ts
+'use server';
+
+import { z } from 'zod';
+
+const FormSchema = z.object({
+  id: z.string(),
+  customerId: z.string(),  // https://zod.dev/api?id=strings
+  amount: z.coerce.number(),  // 入力データを適切な型に強制変換 (https://zod.dev/api?id=coercion)
+  status: z.enum(['pending', 'paid']),  // https://zod.dev/api?id=enums
+  date: z.string(),
+})
+
+// idとdateはサーバー側で生成するため、フォームからは受け取らない (https://zod.dev/api?id=omit)
+const CreateInvoice = FormSchema.omit({id: true, date: true})
+
+export async function createInvoice(formData: FormData) {
+  // FormData: https://developer.mozilla.org/ja/docs/Web/API/FormData
+  const {customerId, amount, status} = CreateInvoice.parse({
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  })
+  // 浮動小数点エラーを排除し精度を高めるためにデータベースに通貨値をセント単位で保存
+  const amountInCents = amount * 100;
+  // 請求書の作成日として「YYYY-MM-DD」の形式で新しい日付を作成します
+  const data = new Date().toISOString().split("T")[0];
+   console.log({customerId, amountInCents, status, data});  // {customerId: '3958dc9e-712f-4377-85e9-fec4b6a6442a', amountInCents: 2222200, status: 'pending', data: '2025-10-09'}
+}
+```
+
+### 5. データベースにデータを挿入する
+
+データベースに必要な値がすべて揃ったので、新しい請求書をデータベースに挿入し、変数を渡す SQL クエリを作成できます。
+
+`/app/lib/actions.ts`
+```ts
+'use server';
+
+import { z } from 'zod';
+import postgres from 'postgres';
+
+const sql = postgres(process.env.POSTGRES_URL!, { ssl: false });
+
+// ...
+
+export async function createInvoice(formData: FormData) {
+  // ...
+
+  await sql`
+    INSERT INTO invoices (customer_id, amount, status, date)
+    VALUES (${customerId}, ${amountInCents}, ${status}, ${data})
+  `;
+}
+```
+
+
+### 6. 再検証してリダイレクト
+
+Next.js には、ルートセグメントをユーザーのブラウザに一定期間保存するクライアント側ルーターキャッシュがあります。このキャッシュは、プリフェッチと併用することで、ユーザーがルート間を素早く移動できるようにし、サーバーへのリクエスト数を削減します。
+
+請求書ルートに表示されるデータを更新するため、このキャッシュをクリアしてサーバーへの新しいリクエストをトリガーする必要があります。これは、revalidatePathNext.jsの関数を使用して実行できます。
+
+`/app/lib/actions.ts`
+```ts
+// ...
+
+import { revalidatePath } from 'next/cache';
+
+// ...
+
+export async function createInvoice(formData: FormData) {
+  // ...
+
+  revalidatePath('/dashboard/invoices');  // キャッシュをクリアして、請求書一覧ページを再検証・データを再取得
+}
+```
+
+
+データベースが更新されると、/dashboard/invoicesパスが再検証され、サーバーから最新のデータが取得されます。
+
+この時点で、ユーザーを元のページに戻すリダイレクトも行います
+
+
+`/app/lib/actions.ts`
+```ts
+// ...
+
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+
+// ...
+
+export async function createInvoice(formData: FormData) {
+  // ...
+
+  revalidatePath('/dashboard/invoices');  // キャッシュをクリアして、請求書一覧ページを再検証・データを再取得
+  redirect('/dashboard/invoices');  // 請求書一覧ページにリダイレクト
+}
+```

@@ -13,3 +13,11 @@
 # Next.jsの基礎
 
 [Next.js Foundations | NEXT.js](https://nextjs.org/learn/dashboard-app)
+
+
+# メモ
+
+- [Next.js テンプレート](https://vercel.com/templates)
+  - https://vercel.com/templates/next.js/nextjs-ai-chatbot
+    - https://github.com/vercel/ai-chatbot
+  - https://vercel.com/templates/next.js/chatbot-ui
