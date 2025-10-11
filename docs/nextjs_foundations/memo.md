@@ -2410,7 +2410,7 @@ export async function updateInvoice(id: string, formData: FormData) {
 <form action={updateInvoice(id)}>
 ```
 
-代わりに、JS `bind` を使用して `id` をサーバーアクションに渡すことができます。これにより、サーバーアクションに渡される値はすべてエンコードされます。
+代わりに、JavaScriptの `Function.prototype.bind()` 関数を使用して `id` がすでに設定された `updateInvoice()` を生成することができます。
 
 
 `/app/ui/invoices/edit-form.tsx`
@@ -2420,7 +2420,8 @@ export async function updateInvoice(id: string, formData: FormData) {
 import { updateInvoice } from '@/app/lib/actions';  // 追加
 
 export default function EditInvoiceForm({ invoice, customers, }: { invoice: InvoiceForm; customers: CustomerField[]; }) {
-  // updateInvoice関数の第一引数の id に invoice.id を指定した関数を生成
+
+  // updateInvoice()の第一引数(id)に invoice.id を指定した関数を生成
   const updateInvoiceWithId = updateInvoice.bind(null, invoice.id);
 
   return (
@@ -2432,7 +2433,7 @@ export default function EditInvoiceForm({ invoice, customers, }: { invoice: Invo
 ```
 
 
-#### `bind` とは
+#### `Function.prototype.bind()` とは
 
 - [Function.prototype.bind() | MDN](https://nextjs.org/learn/dashboard-app/mutating-data)
 
@@ -2482,4 +2483,38 @@ console.log(unboundGetX()); // undefined (関数内の this がグローバル�
 
 var boundGetX = module.getX.bind(module)
 console.log(boundGetX())  // 42 (関数内の this が module オブジェクトなので)
+```
+
+
+## Invoiceの削除
+
+サーバーアクションを使用して請求書を削除するには、削除ボタンを `<form>` 要素で囲み、 `bind` を使用して `id` をサーバーアクションに渡します：
+
+`/app/lib/actions.ts`
+```ts
+export async function deleteInvoice(id: string) {
+  await sql`DELETE FROM invoices WHERE id = ${id}`;
+  revalidatePath('/dashboard/invoices');  // キャッシュをクリアして、請求書一覧ページを再検証・データを再取得
+}
+```
+
+
+`/app/ui/invoices/buttons.tsx`
+```tsx
+import { deleteInvoice } from '@/app/lib/actions';
+ 
+// ...
+ 
+export function DeleteInvoice({ id }: { id: string }) {
+  const deleteInvoiceWithId = deleteInvoice.bind(null, id);
+
+  return (
+    <form action={deleteInvoiceWithId}>
+      <button type="submit" className="rounded-md border p-2 hover:bg-gray-100">
+        <span className="sr-only">Delete</span>
+        <TrashIcon className="w-4" />
+      </button>
+    </form>
+  );
+}
 ```
