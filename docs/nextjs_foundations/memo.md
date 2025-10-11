@@ -2488,7 +2488,8 @@ console.log(boundGetX())  // 42 (関数内の this が module オブジェクト
 
 ## Invoiceの削除
 
-サーバーアクションを使用して請求書を削除するには、削除ボタンを `<form>` 要素で囲み、 `bind` を使用して `id` をサーバーアクションに渡します：
+invoiceを削除するサーバーアクションを定義します。
+
 
 `/app/lib/actions.ts`
 ```ts
@@ -2498,6 +2499,7 @@ export async function deleteInvoice(id: string) {
 }
 ```
 
+サーバーアクションを使用して請求書を削除するには、削除ボタンを `<form>` 要素で囲み、 `bind` を使用して `id` をサーバーアクションに渡します：
 
 `/app/ui/invoices/buttons.tsx`
 ```tsx
@@ -2506,6 +2508,7 @@ import { deleteInvoice } from '@/app/lib/actions';
 // ...
  
 export function DeleteInvoice({ id }: { id: string }) {
+  // deleteInvoice()の第一引数(id)に invoice.id を指定した関数を生成
   const deleteInvoiceWithId = deleteInvoice.bind(null, id);
 
   return (
