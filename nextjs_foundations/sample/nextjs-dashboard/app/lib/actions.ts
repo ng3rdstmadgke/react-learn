@@ -17,8 +17,10 @@ const FormSchema = z.object({
 
 // idとdateはサーバー側で生成するため、フォームからは受け取らない (https://zod.dev/api?id=omit)
 const CreateInvoice = FormSchema.omit({id: true, date: true})
+const UpdateInvoice = FormSchema.omit({ id: true, date: true });
 
 export async function createInvoice(formData: FormData) {
+  // フォームから送信されたデータを検証
   // FormData: https://developer.mozilla.org/ja/docs/Web/API/FormData
   const {customerId, amount, status} = CreateInvoice.parse({
     customerId: formData.get('customerId'),
@@ -33,6 +35,26 @@ export async function createInvoice(formData: FormData) {
   await sql`
     INSERT INTO invoices (customer_id, amount, status, date)
     VALUES (${customerId}, ${amountInCents}, ${status}, ${data})
+  `;
+
+  revalidatePath('/dashboard/invoices');  // キャッシュをクリアして、請求書一覧ページを再検証・データを再取得
+  redirect('/dashboard/invoices');  // 請求書一覧ページにリダイレクト
+}
+
+export async function updateInvoice(id: string, formData: FormData) {
+  // フォームから送信されたデータを検証
+  // FormData: https://developer.mozilla.org/ja/docs/Web/API/FormData
+  const {customerId, amount, status } = UpdateInvoice.parse({
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  });
+  const amountInCents = amount * 100;
+
+  await sql`
+    UPDATE invoices
+    SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
+    WHERE id = ${id}
   `;
 
   revalidatePath('/dashboard/invoices');  // キャッシュをクリアして、請求書一覧ページを再検証・データを再取得

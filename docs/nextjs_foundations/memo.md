@@ -2263,3 +2263,223 @@ export async function createInvoice(formData: FormData) {
   redirect('/dashboard/invoices');  // 請求書一覧ページにリダイレクト
 }
 ```
+
+
+## Invoiceの更新
+
+### 1. `invoices/` 配下に動的ルートセグメント(`[id]`)を作成する
+
+Next.js では、正確なセグメント名がわからず、データに基づいてルートを作成したい場合に、 動的ルートセグメントを作成できます。  
+フォルダ名を角括弧で囲むことで、動的ルートセグメントを作成できます。例えば`[id]` や `[post]` などです。
+
+
+- [Dynamic Route Segments | NEXT.js](https://nextjs.org/docs/app/api-reference/file-conventions/dynamic-routes)
+
+
+
+```bash
+mkdir -p "app/dashboard/invoices/[id]/edit"
+touch "app/dashboard/invoices/[id]/edit/page.tsx"
+```
+
+`<Table>` コンポーネントには、テーブル レコードから請求書を受け取るボタン `<UpdateInvoice />` があることに注目してください
+
+`/app/ui/invoices/table.tsx`
+```tsx
+export default async function InvoicesTable({
+  query,
+  currentPage,
+}: {
+  query: string;
+  currentPage: number;
+}) {
+  return (
+    // ...
+    <td className="flex justify-end gap-2 whitespace-nowrap px-6 py-4 text-sm">
+      <UpdateInvoice id={invoice.id} />  {/* <- これ */}
+      <DeleteInvoice id={invoice.id} />
+    </td>
+    // ...
+  );
+}
+
+```
+
+`<UpdateInvoice />` コンポーネントに移動し、`id` プロパティを受け入れるよう `href` にを更新します。
+`<UpdateInvoice />` コンポーネントに移動し、`Link` の `href` を `id` プロパティを受け入れるように更新します。動的なルートセグメントへのリンクにはテンプレートリテラルを使用できます:
+
+`/app/ui/invoices/buttons.tsx`
+```tsx
+import { PencilIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import Link from 'next/link';
+ 
+// ...
+ 
+export function UpdateInvoice({ id }: { id: string }) {
+  return (
+    <Link
+      href={`/dashboard/invoices/${id}/edit`}  // idを含めたパスに修正
+      className="rounded-md border p-2 hover:bg-gray-100"
+    >
+      <PencilIcon className="w-5" />
+    </Link>
+  );
+}
+```
+
+### 2. 指定された `id` の請求書を読み込む
+
+URLのパスから `id` を取得し、その `id` で対象の `invoice` を取得します。  
+取得した `invoice` の情報をデフォルト値として編集フォームを描画します。
+
+`/app/dashboard/invoices/[id]/edit/page.tsx`
+```tsx
+import Form from "@/app/ui/invoices/edit-form";
+import Breadcrumbs from "@/app/ui/invoices/breadcrumbs";
+import { fetchInvoiceById, fetchCustomers } from "@/app/lib/data";
+
+export default async function Page(props: {params: Promise<{id: string}>}) {
+  const params = await props.params;
+  const id = params.id;
+  // フォームの初期値として請求書データと顧客データを取得
+  const [invoice, customers] = await Promise.all([
+    fetchInvoiceById(id),
+    fetchCustomers()
+  ])
+  return (
+    <main>
+      <Breadcrumbs
+        breadcrumbs={[
+          { label: 'Invoices', href: '/dashboard/invoices' },
+          {
+            label: 'Edit Invoice',
+            href: '/dashboard/invoices/${id}/edit',
+            active: true,
+          },
+
+        ]}
+      />
+      {}
+      <Form invoice={invoice} customers={customers} />
+    </main>
+  )
+}
+```
+
+![img](img/12_edit_form.png)
+
+
+### 3. サーバーアクションに渡す
+
+データベースを更新するためのサーバーアクションを定義します。
+
+`/app/lib/actions.ts`
+```tsx
+// Use Zod to update the expected types
+const UpdateInvoice = FormSchema.omit({ id: true, date: true });
+ 
+// ...
+ 
+export async function updateInvoice(id: string, formData: FormData) {
+  // フォームから送信されたデータを検証
+  // FormData: https://developer.mozilla.org/ja/docs/Web/API/FormData
+  const { customerId, amount, status } = UpdateInvoice.parse({
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  });
+ 
+  const amountInCents = amount * 100;
+ 
+  await sql`
+    UPDATE invoices
+    SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
+    WHERE id = ${id}
+  `;
+ 
+  revalidatePath('/dashboard/invoices');  // キャッシュをクリアして、請求書一覧ページを再検証・データを再取得
+  redirect('/dashboard/invoices');  // 請求書一覧ページにリダイレクト
+}
+```
+
+最後に、サーバーアクションをコンポーネントの `<form>` の `action` に指定しますが、
+サーバーアクションの `id` 引数は以下のような形式で渡すことはできません。
+
+```tsx
+// Passing an id as argument won't work
+<form action={updateInvoice(id)}>
+```
+
+代わりに、JS `bind` を使用して `id` をサーバーアクションに渡すことができます。これにより、サーバーアクションに渡される値はすべてエンコードされます。
+
+
+`/app/ui/invoices/edit-form.tsx`
+```tsx
+'use client';
+// ...
+import { updateInvoice } from '@/app/lib/actions';  // 追加
+
+export default function EditInvoiceForm({ invoice, customers, }: { invoice: InvoiceForm; customers: CustomerField[]; }) {
+  // updateInvoice関数の第一引数の id に invoice.id を指定した関数を生成
+  const updateInvoiceWithId = updateInvoice.bind(null, invoice.id);
+
+  return (
+    <form action={updateInvoiceWithId}>  {/* form の action に請求書を更新する関数を指定 */}
+    {/* ... */}
+    </form>
+  )
+}
+```
+
+
+#### `bind` とは
+
+- [Function.prototype.bind() | MDN](https://nextjs.org/learn/dashboard-app/mutating-data)
+
+`bind()` 関数は元の関数の「 `this` キーワード」と「引数」を設定した新しい関数を生成します。  
+いわゆる **カリー化** みたいなことができる
+
+
+- シグネチャ
+`bind(thisArg, arg1, arg2, ... argN)`
+- 引数
+  - `thisArg`
+  関数内で `this` を利用したときに参照されるオブジェクトを指定します。  
+  `null` `undefined` を指定するとグローバルオブジェクトとなります。
+  - `arg1, ..., argN`
+  元の関数の引数を一部または全部指定できます
+- 戻り値
+  `this` の値と初期の引数が設定された関数のコピー
+
+
+例1: 引数の一部を指定する
+
+```js
+function product (a, b) {
+    return a * b;
+}
+
+console.log(product(5, 4)) // 20
+
+var double = product.bind(null, 2)  // productの第一引数に2を指定した新しい関数を生成
+
+console.log(double(5))  // 10
+```
+
+例2: 任意の this を指定する
+
+```js
+
+const module = {
+  x: 42,
+  getX() {
+    return this.x;
+  }
+}
+
+var unboundGetX = module.getX;
+console.log(unboundGetX()); // undefined (関数内の this がグローバルオブジェクトなので)
+
+var boundGetX = module.getX.bind(module)
+console.log(boundGetX())  // 42 (関数内の this が module オブジェクトなので)
+```
