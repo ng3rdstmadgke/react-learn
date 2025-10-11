@@ -19,6 +19,7 @@ const FormSchema = z.object({
 const CreateInvoice = FormSchema.omit({id: true, date: true})
 const UpdateInvoice = FormSchema.omit({ id: true, date: true });
 
+
 export async function createInvoice(formData: FormData) {
   // フォームから送信されたデータを検証
   // FormData: https://developer.mozilla.org/ja/docs/Web/API/FormData
@@ -32,14 +33,20 @@ export async function createInvoice(formData: FormData) {
   // 請求書の作成日として「YYYY-MM-DD」の形式で新しい日付を作成します
   const data = new Date().toISOString().split("T")[0];
 
-  await sql`
-    INSERT INTO invoices (customer_id, amount, status, date)
-    VALUES (${customerId}, ${amountInCents}, ${status}, ${data})
-  `;
+  try {
+    await sql`
+      INSERT INTO invoices (customer_id, amount, status, date)
+      VALUES (${customerId}, ${amountInCents}, ${status}, ${data})
+    `;
+  } catch (error) {
+    console.error(error);
+    throw new Error('Database Error: Failed to Create Invoice.');
+  }
 
   revalidatePath('/dashboard/invoices');  // キャッシュをクリアして、請求書一覧ページを再検証・データを再取得
   redirect('/dashboard/invoices');  // 請求書一覧ページにリダイレクト
 }
+
 
 export async function updateInvoice(id: string, formData: FormData) {
   // フォームから送信されたデータを検証
@@ -51,11 +58,16 @@ export async function updateInvoice(id: string, formData: FormData) {
   });
   const amountInCents = amount * 100;
 
-  await sql`
-    UPDATE invoices
-    SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
-    WHERE id = ${id}
-  `;
+  try {
+    await sql`
+      UPDATE invoices
+      SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
+      WHERE id = ${id}
+    `;
+  } catch (error) {
+    console.error(error);
+    throw new Error('Database Error: Failed to Update Invoice.');
+  }
 
   revalidatePath('/dashboard/invoices');  // キャッシュをクリアして、請求書一覧ページを再検証・データを再取得
   redirect('/dashboard/invoices');  // 請求書一覧ページにリダイレクト
