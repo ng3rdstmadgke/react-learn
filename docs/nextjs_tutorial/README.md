@@ -2825,7 +2825,7 @@ Next.jsは、アクセシビリティの問題を早期に検出するために�
 ```bash
 pnpm lint
 
-# > @ lint /workspaces/react-learn/nextjs_foundations/sample/nextjs-dashboard
+# > @ lint /workspaces/react-learn/nextjs_tutorial/
 # > next lint
 # 
 # `next lint` is deprecated and will be removed in Next.js 16.
@@ -2833,9 +2833,9 @@ pnpm lint
 # For existing projects, migrate to the ESLint CLI:
 # npx @next/codemod@canary next-lint-to-eslint-cli .
 # 
-# (node:1306592) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///workspaces/react-learn/nextjs_foundations/sample/nextjs-dashboard/next.config.ts is not specified and it doesn't parse as CommonJS.
+# (node:1306592) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///workspaces/react-learn/nextjs_tutorial/next.config.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-# To eliminate this warning, add "type": "module" to /workspaces/react-learn/nextjs_foundations/sample/nextjs-dashboard/package.json.
+# To eliminate this warning, add "type": "module" to /workspaces/react-learn/nextjs_tutorial/package.json.
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # 
 # ./app/dashboard/(overview)/page.tsx

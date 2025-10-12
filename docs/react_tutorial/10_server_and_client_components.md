@@ -2,7 +2,7 @@
 ---
 
 - https://nextjs.org/learn/react-foundations/server-and-client-components
-- [ソースコード](../../react_foundations/10_server_and_client_components/)
+- [ソースコード](../../react_tutorial/10_server_and_client_components/)
 
 
 # サーバーとクライアント

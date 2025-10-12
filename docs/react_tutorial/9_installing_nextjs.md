@@ -2,7 +2,7 @@ Next.jsのインストール
 ---
 
 - https://nextjs.org/learn/react-foundations/installation
-- [ソースコード](../../react_foundations/9_installing_nextjs/)
+- [ソースコード](../../react_tutorial/9_installing_nextjs/)
 
 
 # NextJSのインストール
@@ -96,7 +96,7 @@ Error:   × You're importing a component that needs `useState`. This React Hook 
   │  Learn more: https://nextjs.org/docs/app/api-reference/directives/use-client
   │
 
-   ╭─[/workspaces/react-learn/react_foundations/9_installing_nextjs/app/page.js:1:1]
+   ╭─[/workspaces/react-learn/react_tutorial/9_installing_nextjs/app/page.js:1:1]
  1 │ import { useState } from 'react';
    ·          ────────
  2 │ 

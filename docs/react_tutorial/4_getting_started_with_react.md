@@ -2,7 +2,7 @@ Reactを始めよう
 ---
 
 - https://nextjs.org/learn/react-foundations/getting-started-with-react
-- [ソースコード](../../react_foundations/4_getting_started_with_react/)
+- [ソースコード](../../react_tutorial/4_getting_started_with_react/)
 
 
 # 初めてのReact

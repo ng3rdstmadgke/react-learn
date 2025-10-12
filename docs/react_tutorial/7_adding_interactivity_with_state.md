@@ -2,7 +2,7 @@
 ---
 
 - https://nextjs.org/learn/react-foundations/updating-state
-- [ソースコード](../../react_foundations/7_adding_interactivity_with_state/)
+- [ソースコード](../../react_tutorial/7_adding_interactivity_with_state/)
 
 
 # イベントのリスニング
