@@ -808,6 +808,42 @@ WHERE invoices.amount = 666;
 # (2 rows)
 ```
 
+```mermaid
+erDiagram
+    CUSTOMERS {
+      uuid id PK
+      varchar name
+      varchar email
+      varchar image_url
+    }
+
+    INVOICES {
+      uuid id PK
+      uuid customer_id FK
+      int amount
+      varchar status
+      date date
+    }
+
+    REVENUE {
+      varchar(4) month UK
+      int revenue
+    }
+
+    USERS {
+      uuid id PK
+      varchar name
+      text email UK
+      text password
+    }
+
+    %% Relationships
+    CUSTOMERS ||--o{ INVOICES : "has many"
+
+    %% (No declared FKs in schema for REVENUE or USERS)
+
+```
+
 
 # 7. データの取得
 
