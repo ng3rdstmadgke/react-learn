@@ -3099,7 +3099,7 @@ export async function createInvoice(prevState: State, formData: FormData) {
 
 `amount` `status` のフォームにも同様の変更を行います。
 
-![img](img/14_accecibility_server_validation.png)
+![img](img/14_accessibility_server_validation.png)
 
 
 `edit-form.tsx` コンポーネントのフォームにも同様の修正を行います。
