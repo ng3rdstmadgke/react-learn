@@ -2836,7 +2836,7 @@ pnpm lint
 `<input>` 要素や `<select>` 要素に `required` 属性を追加することで、ブラウザが提供するフォーム検証機能を利用して必須入力とすることができます。
 
 `/app/ui/invoices/create-form.tsx`
-```
+```tsx
 <input
   id="amount"
   name="amount"
@@ -2860,28 +2860,260 @@ pnpm lint
 `useActionState` はフォームのサーバーアクションの結果に基づいて `state` を更新するためのフックです。  
 `useActionState` を利用して、バリデーション結果を `state` に保持し画面にメッセージを描画します。
 
-
-#### `useActionState` に関して
-
 - [useActionState - API Reference - Hook| React](https://ja.react.dev/reference/react/useActionState)
 
 
+`react` から `useActionState` フックをインポートします。  
+`useActionState` はフックなので、 `'use client'` でクライアントコンポーネントに変更する必要があります。  
+
+`/app/ui/invoices/create-form.tsx`
+```tsx
+'use client';  // useActionState フックはクライアントコンポーネントでのみ使用可能
+
+// ...
+import { useActionState } from 'react'
+```
+
+`useActionState` フックは 2つの引数と2つの戻り値を持ちます
+- `const [state, formAction] = useActionState(createInvoice, initialState);`
+- 引数 `(action, initState)`
+  1. アクション関数  
+  シグネチャ `function createInvoice(prevState: State|undefined, formData: FormData): Promise<State|undefined>`
+  2. ステートの初期状態  
+- 戻り値 `[state, formAction]`
+  1. 状態管理オブジェクト
+  1. フォームアクション関数
+
+`useActionState` を実行して状態管理オブジェクトとフォームアクション関数を生成し、 `<form>` の `action` 属性に生成したフォームアクション関数を設定します。
+
+`/app/ui/invoices/create-form.tsx`
+```tsx
+// ...
+import { useActionState } from 'react'
+
+export default function Form({ customers }: { customers: CustomerField[] }) {
+  // useActionState フックを使用して、フォームの状態とフォームアクション関数を生成
+  const [state, formAction] = useActionState(createInvoice, initialState);
+
+  return (
+    <form action={formAction}>
+      ...
+    </form>
+  )
+}
+```
+
+`initialState` は任意に定義できます。  
+この例では、`message` と `errors` というキーを持つ`State` オブジェクトを作成し、`actions.ts` ファイルからインポートします。  
+※ `State` 型はこの後作成します。
 
 
-`useActionState` を利用するとフォームアクションの戻り値を `state` として保持することができます。
+`/app/ui/invoices/create-form.tsx`
+```tsx
+// ...
+import { createInvoice, State } from '@/app/lib/actions';  // 追加
+import { useActionState } from 'react'
+
+export default function Form({ customers }: { customers: CustomerField[] }) {
+  // 初期ステートを定義
+  const initialState: State = {message: null, errors: {}};
+  const [state, formAction] = useActionState(createInvoice, initialState);
+
+  return (
+    <form action={formAction}>
+      ...
+    </form>
+  )
+}
+```
+
+`action.ts` ファイルで、Zodを使用してフォームデータを検証できます。FormSchemaを以下のように更新してください：
+
+`/app/lib/actions.ts`
+```ts
+const FormSchema = z.object({
+  id: z.string(),
+  customerId: z.string({
+    // 顧客フィールドが空の場合にエラーを発生させます。エラーメッセージもカスタマイズします。
+    invalid_type_error: 'Please select a customer.',
+  }),
+  amount: z.coerce
+    .number()
+    // 文字列から数値への型変換を行うため、文字列が空の場合0になります。.gt()で金額が0より大きくなるようにします
+    .gt(0, { message: 'Please enter an amount greater than $0.' }),
+  status: z.enum(['pending', 'paid'], {
+    // ステータスフィールドが空の場合にエラーを発生させます。エラーメッセージもカスタマイズします。
+    invalid_type_error: 'Please select an invoice status.',
+  }),
+  date: z.string(),
+});
+```
+
+次に、`createInvoice` アクションを更新し、2つのパラメータ（`prevState` と `formData` ）を受け取るようにします：
+
+`prevState` は useActionStateフックから渡される状態オブジェクトで、必須のプロパティです。
+
+`/app/lib/actions.ts`
+```ts
+export type State = {
+  // フォームの各フィールドに関連するエラーメッセージを格納する
+  errors?: {
+    customerId?: string[];
+    amount?: string[];
+    status?: string[];
+  };
+  // フォームの全体的な状態や操作の結果に関するメッセージを格納する
+  message?: string | null;
+};
+ 
+export async function createInvoice(prevState: State, formData: FormData) {
+  // ...
+}
+```
+
+次に、Zodの `parse()` 関数を `safeParse()` に変更します
+
+`safeParse()` は、成功またはエラーのフィールドを含むオブジェクトを返します。(つまりバリデーションを `try/catch` ブロックでエラーハンドリングする必要がなくなります)
+
+データベースに情報を送信する前に、条件分岐を用いてフォームフィールドが正しく検証されたか確認してください：
+
+`/app/lib/actions.ts`
+```ts
+export async function createInvoice(prevState: State, formData: FormData) {
+  // 各フィールドが正しく入力されているかを検証
+  const validatedFields = CreateInvoice.safeParse({
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  });
+
+  // 検証に失敗した場合、エラーメッセージを含むStateオブジェクトを返す
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors, // {customerId: [...], amount: [...], status: [...]}
+      message: 'Missing Fields. Failed to Create Invoice.',
+    };
+  }
+ 
+  // ...
+}
+```
+
+
+データベースのエラーに対しても特定のメッセージを返すことができます。
+
+`/app/lib/actions.ts`
+```ts
+export async function createInvoice(prevState: State, formData: FormData) {
+  const validatedFields = CreateInvoice.safeParse({
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  });
+ 
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to Create Invoice.',
+    };
+  }
+ 
+  const { customerId, amount, status } = validatedFields.data;
+  const amountInCents = amount * 100;
+  const date = new Date().toISOString().split('T')[0];
+ 
+  try {
+    await sql`
+      INSERT INTO invoices (customer_id, amount, status, date)
+      VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
+    `;
+  } catch (error) {
+    // 変更: データベースエラーが発生した場合、メッセージを含むStateオブジェクトを返す
+    return {
+      message: 'Database Error: Failed to Create Invoice.',
+    };
+  }
+ 
+  revalidatePath('/dashboard/invoices');
+  redirect('/dashboard/invoices');
+}
+```
+
+最後に、フォームコンポーネントでエラーを表示します。  
+`create-form.tsx` コンポーネントに戻り、フォームの状態を使ってエラーにアクセスします。
+
+上記のコードでは、以下のariaラベルも追加しています：
+
+- `aria-describedby="customer-error"`  
+これはselect要素とエラーメッセージコンテナの関係を確立します。 `id="customer-error"` のコンテナが `select` 要素を記述していることを示します。  
+スクリーンリーダーは、ユーザーがselectボックスを操作した際にこの説明を読み上げ、エラーを通知します。
+- `id="customer-error"`  
+この `id` 属性は、`select` 入力のエラーメッセージを保持するHTML要素を一意に識別します。 `aria-describedby` が関係を確立するために必要です。
+- `aria-live="polite"`  
+`div` 内のエラーが更新された際、スクリーンリーダーはユーザーに丁寧に通知します。  
+コンテンツが変更された場合（例：ユーザーがエラーを修正した時）、スクリーンリーダーはこれらの変更をアナウンスしますが、ユーザーの操作を妨げないよう、ユーザーが操作していない時のみ行います。
+
+``
+```tsx
+<form action={formAction}>
+  <div className="rounded-md bg-gray-50 p-4 md:p-6">
+    {/* Customer Name */}
+    <div className="mb-4">
+      <label htmlFor="customer" className="mb-2 block text-sm font-medium">
+        Choose customer
+      </label>
+      <div className="relative">
+        <select
+          id="customer"
+          name="customerId"
+          className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
+          defaultValue=""
+          aria-describedby="customer-error"  // 追加
+        >
+          <option value="" disabled>
+            Select a customer
+          </option>
+          {customers.map((name) => (
+            <option key={name.id} value={name.id}>
+              {name.name}
+            </option>
+          ))}
+        </select>
+        <UserCircleIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500" />
+      </div>
+      {/* 追加: state.errors.customerId に格納されているエラーメッセージを表示 */}
+      <div id="customer-error" aria-live="polite" aria-atomic="true">
+        {state.errors?.customerId &&
+          state.errors.customerId.map((error: string) => (
+            <p className="mt-2 text-sm text-red-500" key={error}>
+              {error}
+            </p>
+          ))}
+      </div>
+      {/* 追加: ここまで*/}
+    </div>
+    // ...
+  </div>
+</form>
+```
+
+`amount` `status` のフォームにも同様の変更を行います。
+
+![img](img/14_accecibility_server_validation.png)
+
+
+`edit-form.tsx` コンポーネントのフォームにも同様の修正を行います。
+
+
+#### `useActionState` を使ったフォオームの検証の最小サンプル
+
+シグネチャ
 
 ```ts
-# シグネチャ
 useActionState(action, initialState, permalink?)
 ```
 
 **サンプルコード**
-
-- stateの型定義( `SampleState` )を作成
-- フォームアクション( `sampleAction` )は引数に `SampleState` と `FormData`を取り、戻り値に `Promise<sampleState | undefined>` を取る関数として定義します。
-  - `export async function sampleAction( prevState: SampleState | undefined, formData: FormData): Promise<SampleState | undefined>`
-- `useActionState()` 関数にフォームアクションと初期ステートを引数に指定して、ステートオブジェクトとフォームアクション関数を生成します。
-- `<form>` の `action` 属性にはフォームアクション、フォームのエラーメッセージの表示にはステートオブジェクトを利用します。
 
 ページコンポーネント
 

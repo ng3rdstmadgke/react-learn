@@ -9,9 +9,16 @@ const sql = postgres(process.env.POSTGRES_URL!, { ssl: false });
 
 const FormSchema = z.object({
   id: z.string(),
-  customerId: z.string(),  // https://zod.dev/api?id=strings
-  amount: z.coerce.number(),  // 入力データを適切な型に強制変換 (https://zod.dev/api?id=coercion)
-  status: z.enum(['pending', 'paid']),  // https://zod.dev/api?id=enums
+  customerId: z.string({
+    invalid_type_error: 'Please select a customer.',
+  }),  // https://zod.dev/api?id=strings
+  amount: z.coerce
+    .number()  // 入力データを適切な型に強制変換 (https://zod.dev/api?id=coercion)
+    // error パラメータ: https://zod.dev/error-customization?id=the-error-param
+    .gt(0, {message: 'Please enter an amount greater than $0.'}),
+  status: z.enum(['pending', 'paid'], {
+    invalid_type_error: 'Plese select an invoice status.',
+  }),  // https://zod.dev/api?id=enums
   date: z.string(),
 })
 
@@ -19,19 +26,40 @@ const FormSchema = z.object({
 const CreateInvoice = FormSchema.omit({id: true, date: true})
 const UpdateInvoice = FormSchema.omit({ id: true, date: true });
 
+export type State = {
+  // フォームの各フィールドに関連するエラーメッセージを格納する
+  errors?: {
+    customerId?: string[];
+    amount?: string[];
+    status?: string[];
+  };
+  // フォームの全体的な状態や操作の結果に関するメッセージを格納する
+  message?: string | null;  
+}
 
-export async function createInvoice(formData: FormData) {
-  // フォームから送信されたデータを検証
-  // FormData: https://developer.mozilla.org/ja/docs/Web/API/FormData
-  const {customerId, amount, status} = CreateInvoice.parse({
+export async function createInvoice(
+  prevState: State | undefined,
+  formData: FormData, // FormData: https://developer.mozilla.org/ja/docs/Web/API/FormData
+): Promise<State|undefined> {
+
+  // 各フィールドが正しく入力されているかを検証
+  const validatedFields = CreateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
     status: formData.get('status'),
   })
-  // 浮動小数点エラーを排除し精度を高めるためにデータベースに通貨値をセント単位で保存
-  const amountInCents = amount * 100;
-  // 請求書の作成日として「YYYY-MM-DD」の形式で新しい日付を作成します
-  const data = new Date().toISOString().split("T")[0];
+
+  // 検証に失敗した場合、エラーメッセージを含むオブジェクトを返す
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to Create Invoice.',
+    }
+  }
+
+  const {customerId, amount, status} = validatedFields.data;
+  const amountInCents = amount * 100; // 浮動小数点エラーを排除し精度を高めるためにデータベースに通貨値をセント単位で保存
+  const data = new Date().toISOString().split("T")[0]; // 請求書の作成日として「YYYY-MM-DD」の形式で新しい日付を作成します
 
   try {
     await sql`
@@ -40,7 +68,10 @@ export async function createInvoice(formData: FormData) {
     `;
   } catch (error) {
     console.error(error);
-    throw new Error('Database Error: Failed to Create Invoice.');
+    // データベースエラーが発生した場合、エラーメッセージを含むオブジェクトを返す
+    return {
+      message: 'Database Error: Failed to Create Invoice.'
+    }
   }
 
   revalidatePath('/dashboard/invoices');  // キャッシュをクリアして、請求書一覧ページを再検証・データを再取得
@@ -48,14 +79,28 @@ export async function createInvoice(formData: FormData) {
 }
 
 
-export async function updateInvoice(id: string, formData: FormData) {
-  // フォームから送信されたデータを検証
-  // FormData: https://developer.mozilla.org/ja/docs/Web/API/FormData
-  const {customerId, amount, status } = UpdateInvoice.parse({
+export async function updateInvoice(
+  id: string,
+  prevState: State | undefined,
+  formData: FormData // FormData: https://developer.mozilla.org/ja/docs/Web/API/FormData
+): Promise<State|undefined> {
+
+  // 各フィールドが正しく入力されているかを検証
+  const validatedFields = CreateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
     status: formData.get('status'),
-  });
+  })
+
+  // 検証に失敗した場合、エラーメッセージを含むオブジェクトを返す
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to Create Invoice.',
+    }
+  }
+
+  const {customerId, amount, status} = validatedFields.data;
   const amountInCents = amount * 100;
 
   try {
@@ -66,7 +111,9 @@ export async function updateInvoice(id: string, formData: FormData) {
     `;
   } catch (error) {
     console.error(error);
-    throw new Error('Database Error: Failed to Update Invoice.');
+    return {
+      message: 'Database Error: Failed to Update Invoice.'
+    }
   }
 
   revalidatePath('/dashboard/invoices');  // キャッシュをクリアして、請求書一覧ページを再検証・データを再取得
