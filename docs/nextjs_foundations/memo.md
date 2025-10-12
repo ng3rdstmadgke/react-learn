@@ -2758,3 +2758,260 @@ http://localhost:3000/dashboard/invoices/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/ed
 ![img](img/13_handling_not_found.png)
 
 ちなみに、**notFoundはerror.tsxよりも優先される**ため、より具体的なエラーを処理したい場合に利用できます！
+
+# 14. アクセシビリティの向上
+
+- アクセシビリティについて更に詳しく知りたい場合はこちら -> [Learn Accesibility | web.dev](https://web.dev/learn/accessibility/)
+
+## Next.js で ESLint アクセシビリティ プラグインを使用する
+
+Next.jsは、アクセシビリティの問題を早期に検出するために、ESLint設定に [eslint-plugin-jsx-a11y](https://www.npmjs.com/package/eslint-plugin-jsx-a11y) プラグインを含んでいます。例えば、このプラグインは、altテキストのない画像がある場合、`aria-*` 属性や `role` 属性を誤って使用している場合などに警告を発します。
+
+これを試して見る場合は `package.json` に `next lint` をスクリプトとして追加します。
+
+`/package.json`
+```js
+{
+  // ...
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev --turbopack",
+    "start": "next start",
+    "lint": "next lint"  // 追加
+  },
+  // ...
+}
+```
+
+実行
+
+
+```bash
+pnpm lint
+
+# > @ lint /workspaces/react-learn/nextjs_foundations/sample/nextjs-dashboard
+# > next lint
+# 
+# `next lint` is deprecated and will be removed in Next.js 16.
+# For new projects, use create-next-app to choose your preferred linter.
+# For existing projects, migrate to the ESLint CLI:
+# npx @next/codemod@canary next-lint-to-eslint-cli .
+# 
+# (node:1306592) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///workspaces/react-learn/nextjs_foundations/sample/nextjs-dashboard/next.config.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /workspaces/react-learn/nextjs_foundations/sample/nextjs-dashboard/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# 
+# ./app/dashboard/(overview)/page.tsx
+# 5:23  Warning: 'Card' is defined but never used.  @typescript-eslint/no-unused-vars
+# 
+# ./app/seed/route.ts
+# 115:11  Warning: 'result' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+# 115:37  Warning: 'sql' is defined but never used.  @typescript-eslint/no-unused-vars
+# 
+# ./app/ui/customers/table.tsx
+# 5:3  Warning: 'CustomersTableType' is defined but never used.  @typescript-eslint/no-unused-vars
+# 
+# ./app/ui/dashboard/latest-invoices.tsx
+# 5:10  Warning: 'LatestInvoice' is defined but never used.  @typescript-eslint/no-unused-vars
+# 
+# ./app/ui/dashboard/nav-links.tsx
+# 28:26  Error: React Hook "usePathname" cannot be called inside a callback. React Hooks must be called in a React function component or a custom React Hook function.  react-hooks/rules-of-hooks
+# 
+# ./app/ui/dashboard/revenue-chart.tsx
+# 4:10  Warning: 'Revenue' is defined but never used.  @typescript-eslint/no-unused-vars
+# 
+# ./app/ui/login-form.tsx
+# 5:3  Warning: 'ExclamationCircleIcon' is defined but never used.  @typescript-eslint/no-unused-vars
+# 
+# info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+#  ELIFECYCLE  Command failed with exit code 1.
+```
+
+## フォーム検証
+
+
+### クライアント側の検証
+
+`<input>` 要素や `<select>` 要素に `required` 属性を追加することで、ブラウザが提供するフォーム検証機能を利用して必須入力とすることができます。
+
+`/app/ui/invoices/create-form.tsx`
+```
+<input
+  id="amount"
+  name="amount"
+  type="number"
+  placeholder="Enter USD amount"
+  className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
+  required
+/>
+```
+
+
+### サーバー側検証
+
+サーバー上でフォームを検証することで、次のことが可能になります。
+
+- データベース送信前に、データが期待どおりの形式であることを確認
+- 悪意のあるユーザーがクライアント側の検証をバイパスするリスクを軽減
+- 有効なデータとみなされるものについては、信頼できる唯一の情報源を確保
+
+
+`useActionState` はフォームのサーバーアクションの結果に基づいて `state` を更新するためのフックです。  
+`useActionState` を利用して、バリデーション結果を `state` に保持し画面にメッセージを描画します。
+
+
+#### `useActionState` に関して
+
+- [useActionState - API Reference - Hook| React](https://ja.react.dev/reference/react/useActionState)
+
+
+
+
+`useActionState` を利用するとフォームアクションの戻り値を `state` として保持することができます。
+
+```ts
+# シグネチャ
+useActionState(action, initialState, permalink?)
+```
+
+**サンプルコード**
+
+- stateの型定義( `SampleState` )を作成
+- フォームアクション( `sampleAction` )は引数に `SampleState` と `FormData`を取り、戻り値に `Promise<sampleState | undefined>` を取る関数として定義します。
+  - `export async function sampleAction( prevState: SampleState | undefined, formData: FormData): Promise<SampleState | undefined>`
+- `useActionState()` 関数にフォームアクションと初期ステートを引数に指定して、ステートオブジェクトとフォームアクション関数を生成します。
+- `<form>` の `action` 属性にはフォームアクション、フォームのエラーメッセージの表示にはステートオブジェクトを利用します。
+
+ページコンポーネント
+
+`/app/sample/page.tsx`
+```tsx
+import Form from '@/app/sample/(ui)/form'
+
+export default async function Page() {
+  return (
+    <div className="m-4">
+      <Form />
+    </div>
+  )
+}
+
+```
+
+フォームコンポーネント
+
+`/app/sample/(ui)/form.tsx`
+```tsx
+'use client';  // フック(useActionStateなど) はクライアントサイドでのみ利用可能
+
+import { SampleState, sampleAction } from '@/app/sample/(ui)/action';
+import { useActionState } from 'react';
+
+export default function Form() {
+  // フォームの初期状態
+  const initialState: SampleState = {errors: {}};
+
+  // useActionState フックでフォームの状態とアクション関数を取得
+  const [state, sampleFormAction] = useActionState(sampleAction, initialState);
+
+  return (
+    <form action={sampleFormAction}> {/* useActionStateフックで取得したフォームアクションを指定 */}
+      {/* name フィールド */}
+      <div className="mb-4">
+        <label htmlFor="name" className="mr-4">Name</label>
+        <input id="name" name="name" type="text" required/>
+        {/* stateからエラーメッセージを表示 */}
+        <div>
+          {state?.errors?.name && state.errors.name.map((e: string) => {
+              return <p className="text-red-600" key={e}>{e}</p>
+          })}
+        </div>
+      </div>
+
+      {/* age フィールド */}
+      <div className="mb-4">
+        <label htmlFor="age" className="mr-4">Age</label>
+        <input id="age" name="age" type="number" required/>
+        {/* stateからエラーメッセージを表示 */}
+        <div>
+          {state?.errors?.age && state.errors.age.map((e: string) => {
+            return <p className="text-red-600" key={e}>{e}</p>
+          })}
+        </div>
+      </div>
+
+      {/* 送信ボタン */}
+      <div>
+        <button 
+          className="rounded bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-700"
+          type="submit"
+        >Submit</button>
+      </div>
+    </form>
+  )
+}
+```
+
+フォームアクション
+
+
+`/app/sample/(ui)/action.tsx`
+```ts
+import { z } from 'zod';
+
+/**
+ * フォームの検証スキーマ
+ */
+const FormSchema = z.object({
+  name: z.string()
+    .trim()
+    .regex(/^[A-Za-z\s]+$/, {message: "アルファベットとスペースのみ使用できます"})
+    .min(2, {message: "2文字以上で入力してください"})
+    .max(50, {message: "50文字以下で入力してください"}),
+  age: z.coerce  // zodのnumberはNaNを許容しないため、z.coerceを使用して文字列を数値に変換 (https://zod.dev/api?id=coercion)
+    .number()
+    .min(0, {message: "0歳以上で入力してください"})
+    .max(100, {message: "100歳以下で入力してください"}),
+})
+
+/**
+ * フォームのstateの型定義
+ */
+export type SampleState = {
+  errors?: {
+    name?: string[];
+    age?: string[];
+  };
+}
+
+/**
+ * フォームのアクション関数
+ *
+ * useActionState フックの第1引数に渡される関数は、stateとFormDataオブジェクトの2つの引数を受け取る必要があります
+ */
+export async function sampleAction(
+  prevState: SampleState | undefined,
+  formData: FormData
+) {
+  // フォームデータの検証
+  const validatedFields = FormSchema.safeParse({
+    name: formData.get("name"),
+    age: formData.get("age")
+  })
+
+  // 検証エラーがある場合は、エラーメッセージを返す
+  // エラーメッセージは state に格納され、フォームに表示される
+  if (!validatedFields.success) {
+    const state: SampleState = {
+      // { name: [...], age: [...] }
+      errors: validatedFields.error.flatten().fieldErrors
+    }
+    return state;
+  }
+
+  // 検証が成功した場合は、フォームデータを処理する (ここではコンソールに出力)
+  console.log("Form submitted successfully:", validatedFields.data);
+}
+
+```
