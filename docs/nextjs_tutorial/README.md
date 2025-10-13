@@ -3283,3 +3283,443 @@ export async function sampleAction(
 }
 
 ```
+
+# 15. 認証の追加
+
+## ログインルートの作成
+
+新たにログインページのルートを作成します。  
+
+`<LoginForm />` コンポーネントはリクエストの情報(URLクエリパラメータ)にアクセスするため `<Suspense>` でラップされています。
+
+`/app/login/page.tsx`
+```tsx
+import AcmeLogo from '@/app/ui/acme-logo';
+import LoginForm from '@/app/ui/login-form';
+import { Suspense } from 'react';
+ 
+export default function LoginPage() {
+  return (
+    <main className="flex items-center justify-center md:h-screen">
+      <div className="relative mx-auto flex w-full max-w-[400px] flex-col space-y-2.5 p-4 md:-mt-32">
+        <div className="flex h-20 w-full items-end rounded-lg bg-blue-500 p-3 md:h-36">
+          <div className="w-32 text-white md:w-36">
+            <AcmeLogo />
+          </div>
+        </div>
+        <Suspense>
+          <LoginForm />
+        </Suspense>
+      </div>
+    </main>
+  );
+}
+```
+
+## NextAuth.js
+
+- [NextAuth.js](https://authjs.dev/reference/nextjs)
+
+
+NextAuth.jsを利用してアプリケーションに認証機能を追加します。  
+NextAuth.js は、セッション管理、サインインとサインアウト、その他の認証に関わる複雑な要素の多くを抽象化します。
+
+
+## NextAuth.js の設定
+
+ターミナルで次のコマンドを実行して NextAuth.js をインストールします。
+
+
+```bash
+#  Next.js 14 以降と互換性のある beta バージョンの NextAuth.js をインストール
+pnpm i next-auth@beta
+```
+
+次に、Cookieを暗号化するためのアプリケーションの秘密鍵を生成します
+
+```bash
+openssl rand -base64 32
+```
+
+`.env` ファイルに生成されたキーを `AUTH_SECRET` として追加します
+
+`.env`
+```ini
+AUTH_SECRET=your-secret-key
+```
+
+### ページオプションの追加
+
+プロジェクトのルートディレクトリに `auth.config.ts` ファイルを作成し、`authConfig` オブジェクトをエクスポートします。  
+このオブジェクトには NextAuth.js の設定オプションが含まれます。現時点では pages オプションのみを含みます：
+
+[NextAuthConfig - API Reference| Auth.js](https://authjs.dev/reference/nextjs#nextauthconfig)
+
+
+※ `satisfies` はオブジェクトが型要件を満たしているかを検査するキーワードです。 `as` のように型を強制的に変換しません。
+
+`/auth.config.ts`
+```ts
+import type { NextAuthConfig } from 'next-auth';
+ 
+export const authConfig = {
+  pages: {
+    signIn: '/login',
+  },
+} satisfies NextAuthConfig;
+```
+
+#### `pages` オプション
+
+- [pages - NextAuthConfig | Auth.js](https://authjs.dev/reference/nextjs#pages)
+
+`pages` オプションではカスタムのサインイン、サインアウト、エラーページへのルートを指定できます (指定がない場合はNextAuth.jsのデフォルトページとなる)
+
+### ミドルウェアでルートを保護する
+
+まずはルートを保護するロジックを実装します。
+
+`/auth.config.ts`
+```ts
+import type { NextAuthConfig, Session } from 'next-auth';
+ 
+export const authConfig = {
+  pages: {
+    signIn: '/login',
+  },
+  callbacks: {
+    authorized({ auth , request: { nextUrl } }) {
+      const isLoggedIn = !!auth?.user;
+      const isOnDashboard = nextUrl.pathname.startsWith("/dashboard");
+      if (isOnDashboard) {
+        // ダッシュボードページにアクセスする場合、ログインしているかどうかを確認します
+        return isLoggedIn;
+      } else if (isLoggedIn) {
+        // ログインしている場合、ダッシュボードにリダイレクトします
+        return Response.redirect(new URL("/dashboard", nextUrl))
+      }
+      return true;
+    }
+  },
+  providers: [],
+} satisfies NextAuthConfig;
+```
+
+#### `callbacks` オプション
+
+- [callbacks - NextAuthConfig | Auth.js](https://authjs.dev/reference/nextjs#callbacks)
+
+認証関連のアクションが実行された際の動作を制御する非同期関数を定義します。
+
+- `authorized` コールバック  
+ミドルウェアを使用してリクエストがページへのアクセスを許可されているかを確認するために使用されます。  
+  - 引数
+    - `auth` にはユーザーの [`Session`](https://authjs.dev/reference/nextjs#session-3) が含まれます
+    - `request` には [`NuxtRequest`](https://nextjs.org/docs/app/api-reference/functions/next-request) が含まれます
+
+
+#### `providers` オプション
+
+- [providers - NextAuthConfig | Auth.js](https://authjs.dev/reference/nextjs#providers)
+
+サインイン用の認証プロバイダー一覧 (Google、Facebook、Twitter、GitHub、メールなど)を指定します(順不同)。  
+組み込みプロバイダーのいずれか、またはカスタムプロバイダーを含むオブジェクトを指定できます。
+
+#### ミドルウェアの定義
+
+- [middleware.js | NEXT.js](https://nextjs.org/docs/app/api-reference/file-conventions/middleware)
+
+ミドルウェアを作成します。 `middleware.ts` というファイルを作成し、`authConfig` オブジェクトをインポートします。
+
+
+`/middleware.ts`
+```ts
+import NextAuth from "next-auth";
+import { authConfig } from "./auth.config";
+
+// NextAuth(): https://authjs.dev/reference/nextjs#default-13
+//   - auth: https://authjs.dev/reference/nextjs#auth-1
+export default NextAuth(authConfig).auth;
+
+export const config = {
+  // matcher: https://nextjs.org/docs/app/building-your-application/routing/middleware#matcher
+  // matcherにマッチするパスに対してミドルウェアが実行されます
+  matcher: ['/((?!api|_next/static|_next/image|.*\\.png$).*)'],
+  runtime: 'nodejs',
+}
+```
+
+ここでは、`authConfig` オブジェクトで [`NextAuth`](https://authjs.dev/reference/nextjs#default-13) を初期化し、 [`auth`](https://authjs.dev/reference/nextjs#auth-1) プロパティをエクスポートしています。  
+
+`auth` プロパティはそのままミドルウェアとして使用できます。
+
+また、Middleware の matcher オプションを使用して、特定のパスで実行されるように指定しています。
+
+ミドルウェアは検証が完了するまではレンダリングを開始しないので、認証においてアプリのセキュリティとパフォーマンスの向上が期待できます。
+
+
+### パスワードハッシュ
+
+
+データベースの初期化時には、 `bcrypt` というパッケージを使用してユーザーのパスワードをハッシュ化し、データベースに保存しました。
+この章の後半では、ユーザーが入力したパスワードがデータベース内のものと一致するか比較するために、再びこのパッケージを使用します。  
+ただし、bcryptパッケージ用に別途ファイルを作成する必要があります。これは、`bcrypt` がNext.jsのミドルウェアでは利用できないNode.js APIに依存しているためです。
+
+
+`auth.config.ts` ファイルに定義した `authConfig` を拡張するために、新しく `auth.ts` ファイルを作成します。
+
+`/auth.ts`
+```ts
+import NextAuth from 'next-auth';
+import { authConfig } from '@/auth.config';
+ 
+export const { auth, signIn, signOut } = NextAuth({
+  ...authConfig,
+});
+```
+
+### `Credentials` プロバイダの追加
+
+次に、 `NextAuth.js`  の `providers` オプションを追加します。
+`providers` は Google や GitHub といったログインオプションを配列で定義できますが、今回は、 `Credentials` プロバイダーのみに焦点を当てます。
+
+※ `Credentials` プロバイダーは、ユーザー名とパスワードでログインすることを可能にします。
+
+`providers` オプションには以下の選択肢があります
+
+- [Credentials](https://authjs.dev/getting-started/authentication/credentials)
+- [OAuth](https://authjs.dev/getting-started/authentication/oauth)
+- [email](https://authjs.dev/getting-started/authentication/email)
+
+
+`/auth.ts`
+```ts
+import NextAuth from 'next-auth';
+import { authConfig } from './auth.config';
+import Credentials from 'next-auth/providers/credentials';  // 追加
+ 
+export const { auth, signIn, signOut } = NextAuth({
+  ...authConfig,
+  providers: [Credentials({})],  // 追加
+});
+```
+
+
+### サインイン機能の追加
+
+認証ロジックの実装は `authorize` 関数に行います。
+
+
+`/auth.ts`
+```ts
+import NextAuth from "next-auth";
+import { authConfig } from "@/auth.config";
+import Credentials from "next-auth/providers/credentials";
+import { z } from "zod";
+import type { User } from "@/app/lib/definitions";
+import bcrypt from 'bcrypt';
+import postgres from 'postgres';
+
+const sql = postgres(process.env.POSTGRES_URL!, {ssl: false})
+ 
+// 指定されたメールアドレスに合致するユーザーをデータベースから取得するヘルパー関数
+async function getUser(email: string): Promise<User | undefined> {
+  try {
+    const users = await sql<User[]>`SELECT * FROM users WHERE email = ${email}`;
+    return users[0];
+  } catch (error) {
+    console.error("Failed to fetch user:", error);
+    throw new Error("Failed to fetch user.");
+  }
+}
+
+export const { auth, signIn, signOut } = NextAuth({
+  ...authConfig,
+  providers: [
+    Credentials({
+      // 認証ロジックの実装は authorize メソッド内で行う
+      // 引数のcredentialsはユーザーがサインインフォームに入力した値
+      async authorize(credentials) {
+        // zodを使ってユーザーの入力値のバリデーション
+        const parsedCredentials = z
+          .object({
+            email: z.string().email(),
+            password: z.string().min(6),
+          })
+          .safeParse(credentials);
+        if (!parsedCredentials.success) {
+          return null;
+        }
+
+        // emailとマッチするユーザーが存在するか確認
+        const { email, password } = parsedCredentials.data;
+        const user = await getUser(email);
+        if (!user) {
+          return null
+        }
+
+        // パスワードが一致するか確認
+        const passwordsMatch = await bcrypt.compare(password, user.password)
+        if (!passwordsMatch) {
+          console.log("Invalid credentials");
+          return null
+        }
+
+        // 認証に成功した場合、ユーザーオブジェクトを返す
+        return user;
+      }
+
+    })
+  ],
+})
+
+```
+
+
+### ログインフォームの更新
+
+認証ロジックをログインフォームに接続します。  
+`actions.ts` ファイルに `authenticate` という新しいアクションを作成します。このアクションは `auth.ts` で生成した `signIn` 関数を利用してログイン処理を行います。
+
+- [signIn - NextAuthResult | Auth.js](https://authjs.dev/reference/nextjs#signin-2)
+  - 引数
+    - `provider` : [`ProviderId`](https://authjs.dev/reference/core/providers#providerid) 
+    - `options` : `FormData`
+- [errors | Auth.js](https://authjs.dev/reference/core/errors)
+
+`/app/lib/actions.ts`
+```ts
+'use server';
+ 
+import { signIn } from '@/auth';
+import { AuthError } from 'next-auth';
+ 
+// ...
+ 
+export async function authenticate(
+  prevState: string | undefined,
+  formData: FormData,
+) {
+  try {
+    await signIn('credentials', formData);
+  } catch (error) {
+    // error | Auth.js: https://authjs.dev/reference/core/errors
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case 'CredentialsSignin':
+          return 'Invalid credentials.';
+        default:
+          return 'Something went wrong.';
+      }
+    }
+    throw error;
+  }
+}
+```
+
+最後に、 `login-form.tsx` コンポーネントで `useActionState` を使用して、 `authenticate` サーバーアクションからフォームアクションを生成し、フォームに設定します。  
+同時にフォームの状態管理も行います。
+
+`/app/ui/login-form.tsx`
+```tsx
+'use client';  // useActionStateフックを利用するのでクライアントコンポーネントにする
+ 
+// ...
+import { useActionState } from 'react';
+import { authenticate } from '@/app/lib/actions';
+import { useSearchParams } from 'next/navigation';
+ 
+export default function LoginForm() {
+  // URLクエリパラメータからリダイレクト先のURLを取得
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+
+  // ステートオブジェクトとフォームアクションを生成
+  const [errorMessage, formAction, isPending] = useActionState(authenticate, undefined);
+ 
+  return (
+    <form action={formAction} className="space-y-3"> {/* フォームアクションを設定 */}
+      <div className="flex-1 rounded-lg bg-gray-50 px-6 pb-4 pt-8">
+        <h1 className={`${lusitana.className} mb-3 text-2xl`}>
+          Please log in to continue.
+        </h1>
+        <div className="w-full">
+          {/* ... */}
+        </div>
+        {/* type=hidden で redirectTo パラメータを追加 */}
+        <input type="hidden" name="redirectTo" value={callbackUrl} />
+        {/* aria-disabled={isPending} で処理中はボタンを押せなくする */}
+        <Button className="mt-4 w-full" aria-disabled={isPending}>
+          Log in <ArrowRightIcon className="ml-auto h-5 w-5 text-gray-50" />
+        </Button>
+        <div
+          className="flex h-8 items-end space-x-1"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {/* ステートのエラーメッセージを表示 */}
+          {errorMessage && (
+            <>
+              <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
+              <p className="text-sm text-red-500">{errorMessage}</p>
+            </>
+          )}
+        </div>
+      </div>
+    </form>
+  );
+}
+```
+
+## ログアウト機能の追加
+
+
+
+`<SideNav />` にログアウト機能を追加するには、`<form>` 要素内で `auth.ts` の `signOut` 関数を呼び出します
+
+- [signOut - NextAuthResult | Auth.js](https://authjs.dev/reference/nextjs#signout-1)
+  - 引数
+    - `options` : `{ redirect: R; redirectTo: string; }`
+
+`/ui/dashboard/sidenav.tsx`
+```tsx
+// ...
+import { signOut } from '@/auth';
+ 
+export default function SideNav() {
+  return (
+    <div className="flex h-full flex-col px-3 py-4 md:px-2">
+      // ...
+      <div className="flex grow flex-row justify-between space-x-2 md:flex-col md:space-x-0 md:space-y-2">
+        <NavLinks />
+        <div className="hidden h-auto w-full grow rounded-md bg-gray-50 md:block"></div>
+        {/* action で signOut関数を実行 */}
+        <form
+          action={async () => {
+            'use server';
+            await signOut({ redirectTo: '/' });
+          }}
+        >
+          <button className="flex h-[48px] grow items-center justify-center gap-2 rounded-md bg-gray-50 p-3 text-sm font-medium hover:bg-sky-100 hover:text-blue-600 md:flex-none md:justify-start md:p-2 md:px-3">
+            <PowerIcon className="w-6" />
+            <div className="hidden md:block">Sign Out</div>
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+```
+
+
+## 動作確認
+
+- http://localhost:3000/login
+- メールアドレス: `user@nextmail.com`
+- パスワード: `123456`
+
+![img](img/15_login.png)
+
+ログイン失敗
+
+![img](img/15_invalid_credentials.png)
