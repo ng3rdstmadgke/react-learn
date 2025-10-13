@@ -2026,6 +2026,7 @@ export default function Search({ placeholder }: { placeholder: string }) {
 
 # 12. データの変更
 
+- https://nextjs.org/learn/dashboard-app/mutating-data
 
 ## React Server Actions
 
@@ -2570,6 +2571,7 @@ export function DeleteInvoice({ id }: { id: string }) {
 
 # 13. エラー処理
 
+- https://nextjs.org/learn/dashboard-app/error-handling
 
 ## try/catchサーバーアクションへの追加
 
@@ -2796,6 +2798,8 @@ http://localhost:3000/dashboard/invoices/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/ed
 ちなみに、**notFoundはerror.tsxよりも優先される**ため、より具体的なエラーを処理したい場合に利用できます！
 
 # 14. アクセシビリティの向上
+
+- https://nextjs.org/learn/dashboard-app/improving-accessibility
 
 - アクセシビリティについて更に詳しく知りたい場合はこちら -> [Learn Accesibility | web.dev](https://web.dev/learn/accessibility/)
 
@@ -3286,6 +3290,8 @@ export async function sampleAction(
 
 # 15. 認証の追加
 
+- https://nextjs.org/learn/dashboard-app/adding-authentication
+
 ## ログインルートの作成
 
 新たにログインページのルートを作成します。  
@@ -3728,6 +3734,8 @@ export default function SideNav() {
 
 # 16. メタデータの追加
 
+- https://nextjs.org/learn/dashboard-app/adding-metadata
+
 ## メタデータの種類
 
 ### title メタデータ
@@ -3872,3 +3880,8 @@ export const metadata: Metadata = {
 - /dashboard/customers ページ。
 - /dashboard/invoices/create ページ。
 - /dashboard/invoices/[id]/edit ページ
+
+
+# 17. 次のステップ
+
+- https://nextjs.org/learn/dashboard-app/next-steps
